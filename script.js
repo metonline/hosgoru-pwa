@@ -1049,7 +1049,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     const dateTimeStr = `${dd}.${mm}.${yy} ${hh}:${min}`;
                                     const msg = getTranslation('results.databaseUpdated')
                                         .replace('{date}', dateTimeStr)
-                                        .replace('{time}', '')
                                         .replace('{count}', allData.length);
                                     document.getElementById('fileInfo').innerHTML = `<span style='color:green;'>${msg}</span>`;
                                     databaseReady = true;
@@ -1088,7 +1087,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const dateTimeStr = `${dd}.${mm}.${yy} ${hh}:${min}`;
                     const msg = getTranslation('results.databaseUpdated')
                         .replace('{date}', dateTimeStr)
-                        .replace('{time}', '')
                         .replace('{count}', allData.length);
                     document.getElementById('fileInfo').innerHTML = `<span style='color:green;'>${msg}</span>`;
                     databaseReady = true;
