@@ -117,6 +117,18 @@ async function initLanguage() {
         await new Promise(resolve => setTimeout(resolve, 100)); // Kısa delay
         switchLanguage(currentLanguage);
         
+        // Tarih input'unun default değerini bugünün bir gün öncesi olarak ayarla
+        const selectedDateInput = document.getElementById('selectedDate');
+        if (selectedDateInput) {
+            const now = new Date();
+            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            const yyyy = yesterday.getFullYear();
+            const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+            const dd = String(yesterday.getDate()).padStart(2, '0');
+            selectedDateInput.value = `${yyyy}-${mm}-${dd}`;
+            console.log(`✓ Tarih input'u default değer ayarlandı: ${yyyy}-${mm}-${dd}`);
+        }
+        
         console.log(`✓ Dil sistemi başarıyla başlatıldı`);
     } catch (e) {
         console.error('❌ Dil sistemi başlatma hatası:', e);
@@ -335,16 +347,6 @@ function closeMobileModal() {
             footer.style.display = 'flex';
             footer.innerHTML = `<button onclick=\"goToGlobalPage(-1, event)\" style=\"flex:1;padding:10px;background:#17a2b8;color:white;border:none;cursor:pointer;margin:5px;\">← Önceki</button><div style=\"flex:1;text-align:center;padding:10px;background:#f0f0f0;margin:5px;border-radius:4px;\">Sayfa 3/3</div><button onclick=\"closeGlobalStatsModal()\" style=\"flex:1;padding:10px;background:#6c757d;color:white;border:none;cursor:pointer;margin:5px;\">Kapat ✕</button>`;
         }
-    }
-    // Tarih seç inputuna bir önceki günü varsayılan olarak ata (yerel saat)
-    const selectedDateInput = document.getElementById('selectedDate');
-    if (selectedDateInput) {
-        const now = new Date();
-        const localYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-        const yyyy = localYesterday.getFullYear();
-        const mm = String(localYesterday.getMonth() + 1).padStart(2, '0');
-        const dd = String(localYesterday.getDate()).padStart(2, '0');
-        selectedDateInput.value = `${yyyy}-${mm}-${dd}`;
     }
 // Günün Şampiyonlarını Göster (NS/EW ayrı kartlar)
 function displayChampions(data) {
