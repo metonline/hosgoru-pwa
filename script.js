@@ -98,6 +98,12 @@ function switchLanguage(lang) {
         }
     });
     
+    // Privacy Policy link'ini güncelle
+    const privacyLinkTr = document.getElementById('privacyLink-tr');
+    const privacyLinkEn = document.getElementById('privacyLink-en');
+    if (privacyLinkTr) privacyLinkTr.style.display = lang === 'tr' ? 'inline' : 'none';
+    if (privacyLinkEn) privacyLinkEn.style.display = lang === 'en' ? 'inline' : 'none';
+    
     console.log(`✅ Dil değiştirildi: ${lang.toUpperCase()}`);
 }
 
