@@ -1052,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     const yy = String(now.getFullYear()).slice(-2);
                                     const hh = String(now.getHours()).padStart(2, '0');
                                     const min = String(now.getMinutes()).padStart(2, '0');
-                                    const dateTimeStr = `${dd}.${mm}.${yy} ${hh}:${min}`;
+                                    const dateTimeStr = `${dd}.${mm}.${yy} - ${hh}:${min}`;
                                     const msg = getTranslation('results.databaseUpdated')
                                         .replace('{date}', dateTimeStr)
                                         .replace('{count}', allData.length);
@@ -1090,7 +1090,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const yy = String(now.getFullYear()).slice(-2);
                     const hh = String(now.getHours()).padStart(2, '0');
                     const min = String(now.getMinutes()).padStart(2, '0');
-                    const dateTimeStr = `${dd}.${mm}.${yy} ${hh}:${min}`;
+                    const dateTimeStr = `${dd}.${mm}.${yy} - ${hh}:${min}`;
                     const msg = getTranslation('results.databaseUpdated')
                         .replace('{date}', dateTimeStr)
                         .replace('{count}', allData.length);
