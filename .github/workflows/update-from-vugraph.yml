@@ -10,6 +10,10 @@ on:
   # Manual trigger
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update-database:
     runs-on: ubuntu-latest
