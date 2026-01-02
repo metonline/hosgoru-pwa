@@ -1,4 +1,4 @@
-// Service Worker - Offline desteği ve caching
+// Service Worker - Offline support and caching
 const CACHE_NAME = 'hosgoru-v7';
 const urlsToCache = [
   '/',
@@ -7,17 +7,17 @@ const urlsToCache = [
   '/script.js',
   '/database.xlsx',
   '/manifest.json'
-  // database.json ASLA buraya eklemeyin!
+  // Never add database.json here!
 ];
 
-// Kurulum sırasında cache'e dosyaları ekle
+// Add files to cache during installation
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Cache açıldı ve dosyalar eklendi');
+        console.log('Cache opened and files added');
         return cache.addAll(urlsToCache).catch(err => {
-          console.warn('Bazı dosyalar cache'lenmedi:', err);
+          console.warn('Some files could not be cached:', err);
         });
       })
   );
@@ -72,7 +72,7 @@ self.addEventListener('fetch', event => {
           // Network başarısız olursa cache'den al
           return caches.match(event.request)
             .then(response => {
-              return response || new Response('Çevrimdışı moddasınız. Lütfen internet bağlantısını kontrol edin.', {
+              return response || new Response('You are offline. Please check your internet connection.', {
                 status: 503,
                 statusText: 'Service Unavailable',
                 headers: new Headers({
@@ -85,15 +85,15 @@ self.addEventListener('fetch', event => {
   }
 });
 
-// Push notifications desteği (opsiyonel)
+// Push notifications support (optional)
 self.addEventListener('push', event => {
   const data = event.data.json();
   const options = {
-    body: data.body || 'Yeni bir güncellemesi var!',
+    body: data.body || 'New update available!',
     icon: '/data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect fill="%231e3c72" width="192" height="192"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="80" fill="white" font-weight="bold">TA</text></svg>',
     badge: '/data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><circle cx="48" cy="48" r="45" fill="%231e3c72"/></svg>'
   };
-  event.waitUntil(self.registration.showNotification('Turnuva Analizi', options));
+  event.waitUntil(self.registration.showNotification('Tournament Analysis', options));
 });
 
-console.log('Service Worker aktif edildi');
+console.log('Service Worker activated');
