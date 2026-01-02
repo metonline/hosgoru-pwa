@@ -7,7 +7,12 @@ GitHub Actions için otomatik Vugraph güncelleme scripti
 import json
 import sys
 import socket
+import os
 from datetime import datetime, timedelta
+
+# Add current directory to path so modules can be imported
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from vugraph_fetcher import VugraphDataFetcher
 
 # Timeout ayarları
