@@ -369,17 +369,23 @@ function initSwipeNavigation() {
         // Sağa swipe (diffX negative) → Önceki sayfa
         if (diffX < -swipeThreshold) {
             console.log('🔄 Sola swipe - Önceki sayfa');
-            const prevBtn = document.querySelector('#resultsNavigation button:first-child');
+            const prevBtn = document.getElementById('dailyPrevBtn');
             if (prevBtn && prevBtn.style.visibility !== 'hidden') {
                 prevBtn.click();
+                console.log('✓ Prev button clicked');
+            } else {
+                console.log('⚠️ Prev button hidden or not found');
             }
         }
         // Sola swipe (diffX positive) → Sonraki sayfa
         else if (diffX > swipeThreshold) {
             console.log('🔄 Sağa swipe - Sonraki sayfa');
-            const nextBtn = document.querySelector('#resultsNavigation button:last-child');
+            const nextBtn = document.getElementById('dailyNextBtn');
             if (nextBtn && nextBtn.style.visibility !== 'hidden') {
                 nextBtn.click();
+                console.log('✓ Next button clicked');
+            } else {
+                console.log('⚠️ Next button hidden or not found');
             }
         }
     }
