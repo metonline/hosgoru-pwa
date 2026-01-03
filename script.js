@@ -186,16 +186,16 @@ async function initLanguage() {
                 const data = await response.json();
                 
                 if (data && data.length > 0) {
-                    // Tarihler tersine sıralandığından ilk kayıt en yenisi
-                    const latestRecord = data[0];
-                    const latestDateStr = latestRecord.Tarih; // Format: "02.01.2025"
+                    // Database sonda en yeni tarih var (eski -> yeni sıralanmış)
+                    const latestRecord = data[data.length - 1];
+                    const latestDateStr = latestRecord.Tarih; // Format: "02.01.2026"
                     
                     if (latestDateStr) {
                         // DD.MM.YYYY -> YYYY-MM-DD dönüştür
                         const [day, month, year] = latestDateStr.split('.');
                         const inputDateValue = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         selectedDateInput.value = inputDateValue;
-                        console.log(`✓ Tarih input'u en son güncelleme tarihine ayarlandı: ${inputDateValue}`);
+                        console.log(`✓ Tarih input'u en son güncelleme tarihine ayarlandı: ${inputDateValue} (${latestDateStr})`);
                     }
                 } else {
                     throw new Error('Database boş');
