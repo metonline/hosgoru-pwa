@@ -177,16 +177,40 @@ async function initLanguage() {
         await new Promise(resolve => setTimeout(resolve, 100)); // Kısa delay
         switchLanguage(currentLanguage);
         
-        // Tarih input'unun default değerini bugünün bir gün öncesi olarak ayarla
+        // Tarih input'unun default değerini en son veri güncelleme tarihine ayarla
         const selectedDateInput = document.getElementById('selectedDate');
         if (selectedDateInput) {
-            const now = new Date();
-            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-            const yyyy = yesterday.getFullYear();
-            const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
-            const dd = String(yesterday.getDate()).padStart(2, '0');
-            selectedDateInput.value = `${yyyy}-${mm}-${dd}`;
-            console.log(`✓ Tarih input'u default değer ayarlandı: ${yyyy}-${mm}-${dd}`);
+            try {
+                // Database'den en son tarihi al
+                const response = await fetch('database.json');
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    // Tarihler tersine sıralandığından ilk kayıt en yenisi
+                    const latestRecord = data[0];
+                    const latestDateStr = latestRecord.Tarih; // Format: "02.01.2025"
+                    
+                    if (latestDateStr) {
+                        // DD.MM.YYYY -> YYYY-MM-DD dönüştür
+                        const [day, month, year] = latestDateStr.split('.');
+                        const inputDateValue = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        selectedDateInput.value = inputDateValue;
+                        console.log(`✓ Tarih input'u en son güncelleme tarihine ayarlandı: ${inputDateValue}`);
+                    }
+                } else {
+                    throw new Error('Database boş');
+                }
+            } catch (err) {
+                console.warn(`⚠️ Database tarih alınamadı, bugünün bir önceki günü kullan. Hata: ${err.message}`);
+                // Fallback: bugünün bir gün öncesi
+                const now = new Date();
+                const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+                const yyyy = yesterday.getFullYear();
+                const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+                const dd = String(yesterday.getDate()).padStart(2, '0');
+                selectedDateInput.value = `${yyyy}-${mm}-${dd}`;
+                console.log(`✓ Fallback tarih kullanıldı: ${yyyy}-${mm}-${dd}`);
+            }
         }
         
         console.log(`✓ Dil sistemi başarıyla başlatıldı`);
