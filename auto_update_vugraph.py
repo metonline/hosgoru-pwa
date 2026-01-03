@@ -10,19 +10,32 @@ import socket
 import os
 import subprocess
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
-
 # Add current directory to path so modules can be imported
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 DB_FILE = os.path.join(SCRIPT_DIR, 'database.json')
 ENV_FILE = os.path.join(SCRIPT_DIR, '.env.github')
 
-# Load GitHub credentials
-load_dotenv(ENV_FILE)
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-GITHUB_REPO = os.getenv('GITHUB_REPO')
-GITHUB_BRANCH = os.getenv('GITHUB_BRANCH', 'main')
+# Load GitHub credentials from .env.github file
+def load_env_file(filepath):
+    """Load environment variables from .env file"""
+    env_vars = {}
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        env_vars[key.strip()] = value.strip()
+        except Exception as e:
+            print(f"⚠️ .env.github yükleme hatası: {e}")
+    return env_vars
+
+env_vars = load_env_file(ENV_FILE)
+GITHUB_TOKEN = env_vars.get('GITHUB_TOKEN', os.getenv('GITHUB_TOKEN', ''))
+GITHUB_REPO = env_vars.get('GITHUB_REPO', os.getenv('GITHUB_REPO', ''))
+GITHUB_BRANCH = env_vars.get('GITHUB_BRANCH', os.getenv('GITHUB_BRANCH', 'main'))
 
 from vugraph_fetcher import VugraphDataFetcher
 
