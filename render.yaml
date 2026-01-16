@@ -4,12 +4,10 @@ services:
     runtime: python
     pythonVersion: 3.11
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT webhook_server:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
     envVars:
       - key: PORT
         value: 10000
-      - key: FLASK_ENV
-        value: production
     plan: free
     healthCheckPath: /
     staticPublicPath: ./
