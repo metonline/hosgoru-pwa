@@ -12,12 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy to Fly.io using Docker
-        run: |
-          echo "Deploying with Fly.io remote builder..."
-          # Use Fly.io's standalone deploy
-          curl -L https://fly.io/install.sh | sh
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy --remote-only --app mgbric
+      - name: Deploy to Fly.io
+        uses: superfly/actions@v1
+        with:
+          args: "deploy --remote-only"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
