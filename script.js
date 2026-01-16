@@ -1,5 +1,5 @@
-// Script version for cache busting - v377
-const SCRIPT_VERSION = '377';
+// Script version for cache busting - v379
+const SCRIPT_VERSION = '379';
 
 // ===== DİL SISTEMI (i18n) =====
 let translations = {};
@@ -47,14 +47,25 @@ function getTranslation(keyPath) {
 }
 
 // Dosya bilgisini göster (dil değişiklikleri için dinamik)
+function formatNumber(num) {
+    /**Format number with thousands separator based on current language*/
+    // Turkish style: 55.996 (uses periods)
+    // English style: 55,996 (uses commas)
+    // Get language from localStorage to ensure it matches the current UI language
+    const lang = localStorage.getItem('language') || localStorage.getItem('appLanguage') || 'tr';
+    const separator = lang === 'tr' ? '.' : ',';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, separator);
+}
+
 function updateFileInfo() {
     if (!allData || allData.length === 0) {
         return;
     }
     const lastDate = getLastDateFromDatabase();
+    const formattedCount = formatNumber(allData.length);
     const msg = getTranslation('results.databaseUpdated')
         .replace('{date}', lastDate)
-        .replace('{count}', allData.length);
+        .replace('{count}', formattedCount);
     document.getElementById('fileInfo').innerHTML = `<span style='color:green;'>${msg}</span>`;
 }
 
@@ -177,41 +188,6 @@ async function initLanguage() {
         await new Promise(resolve => setTimeout(resolve, 100)); // Kısa delay
         switchLanguage(currentLanguage);
         
-        // Tarih input'unun default değerini en son veri güncelleme tarihine ayarla
-        const selectedDateInput = document.getElementById('selectedDate');
-        if (selectedDateInput) {
-            try {
-                // Database'den en son tarihi al
-                const response = await fetch('database.json');
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    // Database sonda en yeni tarih var (eski -> yeni sıralanmış)
-                    const latestRecord = data[data.length - 1];
-                    const latestDateStr = latestRecord.Tarih; // Format: "02.01.2026"
-                    
-                    if (latestDateStr) {
-                        // DD.MM.YYYY -> YYYY-MM-DD dönüştür
-                        const [day, month, year] = latestDateStr.split('.');
-                        const inputDateValue = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        selectedDateInput.value = inputDateValue;
-                        console.log(`✓ Tarih input'u en son güncelleme tarihine ayarlandı: ${inputDateValue} (${latestDateStr})`);
-                    }
-                } else {
-                    throw new Error('Database boş');
-                }
-            } catch (err) {
-                console.warn(`⚠️ Database tarih alınamadı, bugünün bir önceki günü kullan. Hata: ${err.message}`);
-                // Fallback: bugünün bir gün öncesi
-                const now = new Date();
-                const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-                const yyyy = yesterday.getFullYear();
-                const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
-                const dd = String(yesterday.getDate()).padStart(2, '0');
-                selectedDateInput.value = `${yyyy}-${mm}-${dd}`;
-                console.log(`✓ Fallback tarih kullanıldı: ${yyyy}-${mm}-${dd}`);
-            }
-        }
         
         console.log(`✓ Dil sistemi başarıyla başlatıldı`);
     } catch (e) {
@@ -651,7 +627,7 @@ function loadDatabase(period) {
 
     const parseDate = (dateStr) => {
         const [day, month, year] = dateStr.split('.');
-        return new Date(year, month - 1, day);
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     };
 
     const startStr = formatDate(startDate);
@@ -700,19 +676,37 @@ function filterBySelectedDate() {
         alert('Lütfen bir tarih seçin');
         return;
     }
-    // selectedDate format: YYYY-MM-DD
-    const [year, month, day] = selectedDateInput.value.split('-');
-    const filterDate = `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+    // selectedDate format: DD.MM.YYYY (e.g., "16.01.2026")
+    const filterDate = selectedDateInput.value.trim();
+    
+    // Validate format
+    const dateRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+    if (!dateRegex.test(filterDate)) {
+        alert('Lütfen tarih formatını GG.AA.YYYY olarak girin (örn: 16.01.2026)');
+        return;
+    }
+    
     console.log(`🔍 Seçilen tarih: ${filterDate}`);
     console.log(`📊 Toplam kayıt: ${allData.length}`);
+    
+    // Debug: Show sample dates from database
+    if (allData.length > 0) {
+        const sampleDates = [...new Set(allData.slice(0, 100).map(r => r.Tarih))];
+        console.log(`📅 Veritabanında örnek tarihler: ${sampleDates.join(', ')}`);
+    }
+    
     const filtered = allData.filter(record => record.Tarih === filterDate);
     console.log(`✅ Filtrelenen kayıt: ${filtered.length}`);
+    console.log(`📋 Filtrelenen ilk 3 kayıt:`, filtered.slice(0, 3));
+    
     if (filtered.length === 0) {
         alert(`${filterDate} tarihinde kayıt bulunamadı`);
         return;
     }
     // Farklı turnuva isimlerini bul
     const uniqueTournaments = [...new Set(filtered.map(r => r.Turnuva || ''))];
+    console.log(`🎯 Bulunan turnuvalar: ${uniqueTournaments.join(', ')}`);
+    
     if (uniqueTournaments.length > 1) {
         // Kullanıcıya seçim sun
         showTournamentSelectModal(uniqueTournaments, function(selectedTournament) {
@@ -1190,63 +1184,110 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-copy temp database if main is empty or invalid
     // Use Flask endpoints for database loading
     function tryLoadDatabase(mainFile, fallbackFile) {
+        // Try new API endpoint first (always fresh data)
+        let apiUrl = './api/data?v=' + Date.now();
         let mainUrl = './database.json?v=' + Date.now();
         let fallbackUrl = './database_temp.json?v=' + Date.now();
-        fetch(mainUrl)
+        
+        // Try API endpoint first
+        fetch(apiUrl)
             .then(response => {
-                if (!response.ok) throw new Error('Veritabanı yüklenemedi');
+                if (!response.ok) throw new Error('API endpoint failed');
                 return response.json();
             })
-            .then(data => {
-                if (!Array.isArray(data) || data.length === 0) {
-                    if (fallbackFile) {
-                        document.getElementById('fileInfo').innerHTML = '<span style="color:orange;">⚠️ Veritabanı boş, yedek yükleniyor...</span>';
-                        fetch(fallbackUrl)
-                            .then(r => r.json())
-                            .then(fallbackData => {
-                                if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-                                    allData = fallbackData;
-                                    updateFileInfo();
-                                    databaseReady = true;
-                                    initializePlayerSearch();
-                                    if (queuedModalOpen) {
-                                        openGlobalStatsModal(...queuedModalOpen);
-                                        queuedModalOpen = null;
-                                    }
-                                } else {
-                                    document.getElementById('fileInfo').innerHTML = '<span style="color:red;">❌ Hiçbir veritabanı yüklenemedi. Lütfen database.json veya database_temp.json dosyasını kontrol edin.</span>';
-                                    allData = [];
-                                    databaseReady = false;
-                                }
-                            })
-                            .catch(() => {
-                                document.getElementById('fileInfo').innerHTML = '<span style="color:red;">❌ Hiçbir veritabanı yüklenemedi. Lütfen database.json veya database_temp.json dosyasını kontrol edin.</span>';
-                                allData = [];
-                                databaseReady = false;
-                            });
-                        return;
-                    } else {
-                        document.getElementById('fileInfo').innerHTML = '<span style="color:red;">❌ Hiçbir veritabanı yüklenemedi. Lütfen database.json veya database_temp.json dosyasını kontrol edin.</span>';
-                        allData = [];
-                        databaseReady = false;
-                        return;
+            .then(apiData => {
+                // Extract records from API response
+                let data;
+                
+                // Handle different response formats
+                if (apiData.records) {
+                    // New format: has .records property
+                    data = apiData.records;
+                } else if (apiData.legacy_records || apiData.events) {
+                    // Dict format with legacy_records and events - convert to array
+                    data = [];
+                    if (apiData.legacy_records && Array.isArray(apiData.legacy_records)) {
+                        data.push(...apiData.legacy_records);
                     }
+                    if (apiData.events) {
+                        for (let eventId in apiData.events) {
+                            let event = apiData.events[eventId];
+                            if (event.results) {
+                                if (Array.isArray(event.results.NS)) data.push(...event.results.NS);
+                                if (Array.isArray(event.results.EW)) data.push(...event.results.EW);
+                            }
+                        }
+                    }
+                } else if (Array.isArray(apiData)) {
+                    // Already array format
+                    data = apiData;
                 } else {
-                    allData = data;
-                    updateFileInfo();
-                    databaseReady = true;
-                    initializePlayerSearch();
-                    // If a modal open was queued, run it now
-                    if (queuedModalOpen) {
-                        openGlobalStatsModal(...queuedModalOpen);
-                        queuedModalOpen = null;
-                    }
+                    // Unknown format
+                    data = [];
+                }
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('API returned empty data');
+                }
+                
+                console.log(`✅ API loaded ${data.length} records`);
+                allData = data;
+                updateFileInfo();
+                databaseReady = true;
+                initializePlayerSearch();
+                if (queuedModalOpen) {
+                    openGlobalStatsModal(...queuedModalOpen);
+                    queuedModalOpen = null;
                 }
             })
-            .catch(err => {
-                document.getElementById('fileInfo').innerHTML = `<span style='color:red;'>❌ Hiçbir veritabanı yüklenemedi: ${err.message}</span>`;
-                allData = [];
-                databaseReady = false;
+            .catch(apiErr => {
+                // Fall back to direct JSON file
+                console.warn('API endpoint failed, trying direct file:', apiErr.message);
+                fetch(mainUrl)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Database file not found');
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Convert dict format to array if needed
+                        let arrayData = data;
+                        if (!Array.isArray(data)) {
+                            if (data.legacy_records || data.events) {
+                                arrayData = [];
+                                if (data.legacy_records && Array.isArray(data.legacy_records)) {
+                                    arrayData.push(...data.legacy_records);
+                                }
+                                if (data.events) {
+                                    for (let eventId in data.events) {
+                                        let event = data.events[eventId];
+                                        if (event.results) {
+                                            if (Array.isArray(event.results.NS)) arrayData.push(...event.results.NS);
+                                            if (Array.isArray(event.results.EW)) arrayData.push(...event.results.EW);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!Array.isArray(arrayData) || arrayData.length === 0) {
+                            throw new Error('Database is empty');
+                        }
+                        
+                        console.log(`✅ File loaded ${arrayData.length} records`);
+                        allData = arrayData;
+                        updateFileInfo();
+                        databaseReady = true;
+                        initializePlayerSearch();
+                        if (queuedModalOpen) {
+                            openGlobalStatsModal(...queuedModalOpen);
+                            queuedModalOpen = null;
+                        }
+                    })
+                    .catch(err => {
+                        document.getElementById('fileInfo').innerHTML = `<span style='color:red;'>❌ Hiçbir veritabanı yüklenemedi: ${err.message}</span>`;
+                        allData = [];
+                        databaseReady = false;
+                    });
             });
     }
     tryLoadDatabase('database.json', 'database_temp.json');
@@ -2288,4 +2329,263 @@ if (document.readyState === 'loading') {
     setupAutoDataRefresh();
 }
 
-console.log('✓ script.js yüklendi - Tüm fonksiyonlar hazır');
+// ===== DATE PICKER CALENDAR =====
+let currentPickerMonth = new Date();
+
+function openDatePicker() {
+    // Set calendar to show current month
+    currentPickerMonth = new Date();
+    currentPickerMonth.setHours(12, 0, 0, 0);  // Avoid timezone issues
+    updateCalendarDisplay();
+    
+    // Ensure selectedDate input has a default value (latest database date)
+    const selectedDateInput = document.getElementById('selectedDate');
+    if (selectedDateInput && !selectedDateInput.value) {
+        console.log(`🔍 selectedDate input boş, max tarih set ediliyor...`);
+        
+        // Get latest date from database (not today)
+        if (allData && allData.length > 0) {
+            // Find the latest date in database
+            const dates = allData
+                .filter(r => r.Tarih && /^\d{2}\.\d{2}\.\d{4}$/.test(r.Tarih))
+                .map(r => {
+                    const [day, month, year] = r.Tarih.split('.');
+                    return { 
+                        date: new Date(parseInt(year), parseInt(month) - 1, parseInt(day)),
+                        str: r.Tarih 
+                    };
+                })
+                .sort((a, b) => b.date - a.date);
+            
+            if (dates.length > 0) {
+                const latestDateStr = dates[0].str;
+                selectedDateInput.value = latestDateStr;
+                console.log(`✓ selectedDate'a max tarih set: ${latestDateStr}`);
+            }
+        } else {
+            console.warn(`⚠️ allData boş veya yüklenmemiş`);
+        }
+    }
+    
+    // Get latest date from database (for calendar month)
+    let defaultDate = new Date();
+    
+    if (allData && allData.length > 0) {
+        // Find the latest date in database
+        const dates = allData
+            .filter(r => r.Tarih && /^\d{2}\.\d{2}\.\d{4}$/.test(r.Tarih))
+            .map(r => {
+                const [day, month, year] = r.Tarih.split('.');
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            })
+            .sort((a, b) => b - a);  // Sort descending
+        
+        if (dates.length > 0) {
+            defaultDate = dates[0];  // Latest date
+            console.log(`📅 Default tarih database'den alındı: ${defaultDate.toLocaleDateString('tr-TR')}`);
+        }
+    }
+    
+    // Set default as latest database date
+    const day = String(defaultDate.getDate()).padStart(2, '0');
+    const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
+    const year = defaultDate.getFullYear();
+    const defaultFormatted = `${day}.${month}.${year}`;
+    document.getElementById('selectedDate').value = defaultFormatted;
+    
+    document.getElementById('datePickerModal').style.display = 'flex';
+}
+
+function closeDatePicker() {
+    document.getElementById('datePickerModal').style.display = 'none';
+}
+
+function prevCalendarMonth() {
+    currentPickerMonth.setMonth(currentPickerMonth.getMonth() - 1);
+    updateCalendarDisplay();
+}
+
+function nextCalendarMonth() {
+    currentPickerMonth.setMonth(currentPickerMonth.getMonth() + 1);
+    updateCalendarDisplay();
+}
+
+function updateCalendarDisplay() {
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    
+    const year = currentPickerMonth.getFullYear();
+    const month = currentPickerMonth.getMonth();
+    
+    // Update header
+    document.getElementById('calendarMonthYear').textContent = `${monthNames[month]} ${year}`;
+    
+    // Generate calendar grid
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+    
+    // Day headers
+    const dayHeaders = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+    dayHeaders.forEach(day => {
+        const header = document.createElement('div');
+        header.textContent = day;
+        header.style.fontWeight = 'bold';
+        header.style.textAlign = 'center';
+        header.style.color = '#666';
+        header.style.fontSize = '0.85em';
+        grid.appendChild(header);
+    });
+    
+    // Generate dates
+    const currentDate = new Date(startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 42; i++) {
+        // Create a copy of the date to avoid reference issues
+        const cellDate = new Date(currentDate);
+        
+        const day = document.createElement('button');
+        const dateNum = cellDate.getDate();
+        const dateMonth = cellDate.getMonth();
+        
+        day.textContent = dateNum;
+        day.style.padding = '8px';
+        day.style.border = '1px solid #ddd';
+        day.style.borderRadius = '4px';
+        day.style.cursor = 'pointer';
+        day.style.fontSize = '0.9em';
+        day.style.background = '#fff';
+        day.style.color = '#333';
+        day.style.fontWeight = 'normal';
+        
+        // Check if this is today
+        const dateToCheck = new Date(cellDate);
+        dateToCheck.setHours(0, 0, 0, 0);
+        const isToday = dateToCheck.getTime() === today.getTime();
+        
+        if (dateMonth !== month) {
+            day.style.color = '#ccc';
+            day.style.background = '#f5f5f5';
+            day.disabled = true;
+        } else if (isToday) {
+            // Highlight today distinctly
+            day.style.background = '#28a745';
+            day.style.color = 'white';
+            day.style.fontWeight = 'bold';
+            day.style.border = '2px solid #1e7e34';
+            day.style.boxShadow = '0 0 8px rgba(40, 167, 69, 0.5)';
+            // Use cellDate copy, not currentDate
+            day.onclick = () => selectDateFromPicker(new Date(cellDate));
+        } else {
+            // Use cellDate copy, not currentDate
+            day.onclick = () => selectDateFromPicker(new Date(cellDate));
+        }
+        
+        grid.appendChild(day);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+}
+
+function selectDateFromPicker(date) {
+    // Ensure date is not modified by reference issues
+    const safeDate = new Date(date);
+    safeDate.setHours(12, 0, 0, 0);
+    
+    const day = String(safeDate.getDate()).padStart(2, '0');
+    const month = String(safeDate.getMonth() + 1).padStart(2, '0');
+    const year = safeDate.getFullYear();
+    const formattedDate = `${day}.${month}.${year}`;
+    
+    console.log(`📅 Seçilen tarih (Safe): ${formattedDate}`);
+    document.getElementById('selectedDate').value = formattedDate;
+    closeDatePicker();
+    
+    // Automatically apply filter with selected date
+    setTimeout(() => {
+        filterBySelectedDate();
+    }, 100);
+}
+
+// ========== HANDS VIEWER ==========
+function openHandsViewer(tournamentName) {
+    const filteredResults = filterResults(database, 
+        currentFilter.date || '', 
+        currentFilter.tournament || tournamentName,
+        currentFilter.player || '',
+        currentFilter.minScore || 0,
+        currentFilter.maxScore || 100
+    );
+    
+    if (!filteredResults || filteredResults.length === 0) {
+        alert(i18n[currentLanguage].noResults || 'No results found');
+        return;
+    }
+    
+    const firstRecord = filteredResults[0];
+    if (!firstRecord.Hands) {
+        alert(i18n[currentLanguage].noHands || 'Hands not available for this tournament');
+        return;
+    }
+    
+    showHandsModal(firstRecord.Hands, firstRecord.Turnuva);
+}
+
+function showHandsModal(hands, tournamentName) {
+    let modal = document.getElementById('handsModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'handsModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="width: 95%; max-width: 1000px; max-height: 90vh; overflow-y: auto;">
+                <span class="close" onclick="closeHandsModal()">&times;</span>
+                <h2 id="handsTitle"></h2>
+                <div id="handsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('handsTitle').textContent = tournamentName + ' - ' + (i18n[currentLanguage].hands || 'Hands');
+    const grid = document.getElementById('handsGrid');
+    grid.innerHTML = '';
+    
+    // Display hands for each board
+    for (const [boardNum, boardHands] of Object.entries(hands)) {
+        const boardDiv = document.createElement('div');
+        boardDiv.className = 'board-card';
+        boardDiv.style.cssText = `
+            border: 2px solid #1e3c72;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+            font-size: 12px;
+            font-family: monospace;
+        `;
+        
+        let handsHTML = `<strong>Board ${boardNum}</strong><br><br>`;
+        for (const [direction, suit] of Object.entries(boardHands)) {
+            let dirName = {N: 'North', S: 'South', E: 'East', W: 'West'}[direction];
+            let cards = suit.S + ' ' + suit.H + ' ' + suit.D + ' ' + suit.C;
+            handsHTML += `<div><strong>${dirName}:</strong> ${cards}</div>`;
+        }
+        
+        boardDiv.innerHTML = handsHTML;
+        grid.appendChild(boardDiv);
+    }
+    
+    modal.style.display = 'block';
+}
+
+function closeHandsModal() {
+    const modal = document.getElementById('handsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
