@@ -344,12 +344,13 @@ def update_code():
         }), 500
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
     print(f"\n{'='*60}")
     print("GitHub Webhook Server Starting...")
     print(f"{'='*60}")
     print(f"Repository Path: {REPO_PATH}")
     print(f"Webhook Secret Configured: {bool(WEBHOOK_SECRET != 'your-webhook-secret-here')}")
-    print(f"Server Address: http://0.0.0.0:5000")
+    print(f"Server Address: http://0.0.0.0:{port}")
     print(f"{'='*60}\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)
