@@ -4,7 +4,7 @@ services:
     runtime: python
     pythonVersion: 3.11
     buildCommand: pip install -r requirements.txt
-    startCommand: python webhook_server.py
+    startCommand: gunicorn --bind 0.0.0.0:$PORT webhook_server:app
     envVars:
       - key: PORT
         value: 10000
